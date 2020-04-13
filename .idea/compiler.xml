@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="CompilerConfiguration">
+    <annotationProcessing>
+      <profile name="Maven default annotation processors profile" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <module name="Q-Goods" />
+        <module name="Q-EurekaServer" />
+        <module name="Q-Rest" />
+        <module name="Q-Order" />
+        <module name="Q-User" />
+      </profile>
+    </annotationProcessing>
+  </component>
+  <component name="JavacSettings">
+    <option name="ADDITIONAL_OPTIONS_OVERRIDE">
+      <module name="JWeb" options="-parameters" />
+      <module name="Q-EurekaServer" options="-parameters" />
+      <module name="Q-Goods" options="-parameters" />
+      <module name="Q-Order" options="-parameters" />
+      <module name="Q-Rest" options="-parameters" />
+      <module name="Q-User" options="-parameters" />
+    </option>
+  </component>
+</project>

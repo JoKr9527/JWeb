@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: Q-Rest
+server:
+  port: 9084
+eureka:
+  client:
+    service-url:
+      defaultZone: http://192.168.3.18:9080/eureka

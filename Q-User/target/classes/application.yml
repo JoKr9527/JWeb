@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: Q-User
+server:
+  port: 9083
+eureka:
+  client:
+    service-url:
+      defaultZone: http://192.168.3.18:9080/eureka
+  instance:
+    prefer-ip-address: true

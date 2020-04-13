@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: Q-Goods
+server:
+  port: 9081
+eureka:
+  client:
+    service-url:
+      defaultZone: http://192.168.3.18:9080/eureka

@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: Q-Order
+server:
+  port: 9082
+eureka:
+  client:
+    service-url:
+      defaultZone: http://192.168.3.18:9080

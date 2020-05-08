@@ -70,7 +70,7 @@ public abstract class AbstractProviderService implements ProviderService {
      * @param serviceInstance 服务信息实例
      * @return String 服务地址
      */
-    private String getURL(ServiceInstance serviceInstance){
+    protected String getURL(ServiceInstance serviceInstance){
         UriComponentsBuilder uriBuilder = getURIBuilder(serviceInstance);
         if(uriBuilder != null){
             return uriBuilder.build().toUriString();
@@ -78,7 +78,7 @@ public abstract class AbstractProviderService implements ProviderService {
         return null;
     }
 
-    private UriComponentsBuilder getURIBuilder(ServiceInstance serviceInstance){
+    protected UriComponentsBuilder getURIBuilder(ServiceInstance serviceInstance){
         if(serviceInstance instanceof EurekaServiceInstance){
             EurekaServiceInstance instance = (EurekaServiceInstance) serviceInstance;
             return UriComponentsBuilder.newInstance().scheme(instance.getScheme()).host(instance.getInstanceInfo().getIPAddr())

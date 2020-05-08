@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 public class DealServiceImpl implements DealService {
 
     @Autowired
-    @Qualifier("ribbonClientServiceImpl")
+    @Qualifier("openFeignClientServiceImpl")
     private ProviderService providerService;
 
     @Override

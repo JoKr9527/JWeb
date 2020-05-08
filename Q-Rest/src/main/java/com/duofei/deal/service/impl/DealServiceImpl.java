@@ -4,6 +4,7 @@ import com.duofei.deal.bean.GoodsInfo;
 import com.duofei.deal.service.DealService;
 import com.duofei.deal.service.ProviderService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 public class DealServiceImpl implements DealService {
 
     @Autowired
+    @Qualifier("ribbonClientServiceImpl")
     private ProviderService providerService;
 
     @Override

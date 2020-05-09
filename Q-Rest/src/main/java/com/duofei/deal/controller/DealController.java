@@ -17,7 +17,7 @@ public class DealController {
     private DealService dealService;
 
     @GetMapping("/buy/{userName}/{goodsId}")
-    public void buy(@PathVariable String userName, @PathVariable String goodsId, @RequestParam Integer num) {
+    public void buy(@PathVariable String userName, @PathVariable String goodsId, @RequestParam Integer num) throws Exception {
         dealService.buy(userName, goodsId, num);
     }
 

@@ -16,7 +16,7 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
  * @date 2020/4/9
  */
 @EnableEurekaClient
-@EnableFeignClients
+@EnableFeignClients(basePackages = "com.duofei.deal.service.remote")
 @SpringBootApplication
 public class Application {
 

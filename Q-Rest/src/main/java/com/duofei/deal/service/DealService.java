@@ -15,5 +15,5 @@ public interface DealService {
      * @param goodsId 商品id
      * @param num 购买数量
      */
-    void buy(String userName, String goodsId, Integer num);
+    void buy(String userName, String goodsId, Integer num) throws Exception;
 }

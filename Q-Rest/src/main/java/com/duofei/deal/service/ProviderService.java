@@ -16,7 +16,7 @@ public interface ProviderService {
      * @param id 商品id
      * @return GoodsInfo 商品信息
      */
-    GoodsInfo queryGoodsInfo(String id);
+    GoodsInfo queryGoodsInfo(String id) throws Exception;
 
     /**
      * 订单生成
@@ -27,7 +27,7 @@ public interface ProviderService {
      * @param num 购买数量
      * @param total 总价
      */
-    void createOrder(String userName, String goodsId, Integer num, Float total);
+    void createOrder(String userName, String goodsId, Integer num, Float total) throws Exception;
 
     /**
      * 用户支付
@@ -36,7 +36,7 @@ public interface ProviderService {
      * @param userName 用户名称
      * @param total 总价
      */
-    void userPay(String userName, Float total);
+    void userPay(String userName, Float total) throws Exception;
 
     /**
      * 扣除相应商品数
@@ -45,6 +45,6 @@ public interface ProviderService {
      * @param goodsId 商品id
      * @param num 需要减除的商品数
      */
-    void goodsReduce(String goodsId, Integer num);
+    void goodsReduce(String goodsId, Integer num) throws Exception;
 
 }

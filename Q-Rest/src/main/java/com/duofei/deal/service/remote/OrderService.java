@@ -1,5 +1,6 @@
 package com.duofei.deal.service.remote;
 
+import com.duofei.deal.service.remote.fallback.OrderServiceImpl;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,10 +12,9 @@ import org.springframework.web.bind.annotation.RequestParam;
  * @author duofei
  * @date 2020/5/8
  */
-@FeignClient("Q-ORDER")
-@RequestMapping("/order")
+@FeignClient(value = "Q-ORDER", fallback = OrderServiceImpl.class)
 public interface OrderService {
 
-    @GetMapping("/createOrder/{userName}/{goodsId}")
-    void createOrder(@PathVariable("userName") String userName, @PathVariable("goodsId") String goodsId, @RequestParam("num") Integer num, @RequestParam("total") Float total);
+    @GetMapping("/order/createOrder/{userName}/{goodsId}")
+    void createOrder(@PathVariable("userName") String userName, @PathVariable("goodsId") String goodsId, @RequestParam("num") Integer num, @RequestParam("total") Float total) throws Exception;
 }

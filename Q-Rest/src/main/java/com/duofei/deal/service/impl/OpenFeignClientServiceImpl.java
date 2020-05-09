@@ -26,22 +26,22 @@ public class OpenFeignClientServiceImpl implements ProviderService {
 
 
     @Override
-    public GoodsInfo queryGoodsInfo(String id) {
+    public GoodsInfo queryGoodsInfo(String id) throws Exception {
         return goodsService.queryGoodsInfo(id);
     }
 
     @Override
-    public void createOrder(String userName, String goodsId, Integer num, Float total) {
+    public void createOrder(String userName, String goodsId, Integer num, Float total) throws Exception {
         orderService.createOrder(userName, goodsId, num, total);
     }
 
     @Override
-    public void userPay(String userName, Float total) {
+    public void userPay(String userName, Float total) throws Exception {
         userService.userPay(userName, total);
     }
 
     @Override
-    public void goodsReduce(String goodsId, Integer num) {
+    public void goodsReduce(String goodsId, Integer num) throws Exception {
         goodsService.goodsReduce(goodsId, num);
     }
 }

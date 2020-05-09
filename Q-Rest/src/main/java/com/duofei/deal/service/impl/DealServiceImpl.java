@@ -20,7 +20,7 @@ public class DealServiceImpl implements DealService {
     private ProviderService providerService;
 
     @Override
-    public void buy(String userName, String goodsId, Integer num) {
+    public void buy(String userName, String goodsId, Integer num) throws Exception {
         // 获取商品价格
         GoodsInfo goodsInfo = providerService.queryGoodsInfo(goodsId);
         // 生成订单

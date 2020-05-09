@@ -1,6 +1,7 @@
 package com.duofei.deal.service.remote;
 
 import com.duofei.deal.bean.GoodsInfo;
+import com.duofei.deal.service.remote.fallback.GoodsServiceImpl;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,13 +13,12 @@ import org.springframework.web.bind.annotation.RequestParam;
  * @author duofei
  * @date 2020/5/8
  */
-@FeignClient("Q-GOODS")
-@RequestMapping("/goods")
+@FeignClient(value = "Q-GOODS", fallback = GoodsServiceImpl.class)
 public interface GoodsService {
 
-    @GetMapping("/reduce/{goodsId}")
-    void goodsReduce(@PathVariable("goodsId") String goodsId, @RequestParam("num") Integer num);
+    @GetMapping("/goods/reduce/{goodsId}")
+    void goodsReduce(@PathVariable("goodsId") String goodsId, @RequestParam("num") Integer num) throws Exception;
 
-    @GetMapping("/query/{id}")
-    GoodsInfo queryGoodsInfo(@PathVariable("id") String id);
+    @GetMapping("/goods/query/{id}")
+    GoodsInfo queryGoodsInfo(@PathVariable("id") String id) throws Exception;
 }

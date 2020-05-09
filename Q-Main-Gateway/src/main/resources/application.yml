@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: Q-Main-Gateway
+server:
+  port: 9085
+eureka:
+  client:
+    service-url:
+      defaultZone: http://192.168.3.18:9080/eureka
+zuul:
+  routes:
+    deal:
+      path: /deal/**
+      serviceId: Q-REST

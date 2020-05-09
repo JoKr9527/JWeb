@@ -18,6 +18,7 @@
         <module>Q-User</module>
         <module>Q-Order</module>
         <module>Q-Goods</module>
+        <module>Q-Main-Gateway</module>
     </modules>
     <dependencyManagement>
         <dependencies>

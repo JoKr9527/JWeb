@@ -19,6 +19,7 @@
         <module>Q-Order</module>
         <module>Q-Goods</module>
         <module>Q-Main-Gateway</module>
+        <module>Open-File</module>
     </modules>
     <dependencyManagement>
         <dependencies>

@@ -9,6 +9,29 @@ eureka:
       defaultZone: http://192.168.3.18:9080/eureka
 zuul:
   routes:
-    rest:
+    first:
       path: /deal/**
-      serviceId: Q-REST
+      stripPrefix: false
+      serviceId: Q-Rest
+    second:
+      path: /deal/buy/**
+      stripPrefix: false
+      serviceId: Q-Rest
+    openfile:
+      path: /fileSys/**
+      serviceId: Open-File
+ribbon:
+  connectTimeout: 3000
+  readTimeout: 60000
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 60000
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,routes,filters

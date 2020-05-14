@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: Open-File
+server:
+  port: 9086
+eureka:
+  client:
+    service-url:
+      defaultZone: http://192.168.3.18:9080/eureka

@@ -20,6 +20,7 @@
         <module>Q-Goods</module>
         <module>Q-Main-Gateway</module>
         <module>Open-File</module>
+        <module>Q-Common</module>
     </modules>
     <dependencyManagement>
         <dependencies>

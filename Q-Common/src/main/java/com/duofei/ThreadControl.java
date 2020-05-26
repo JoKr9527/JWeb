@@ -15,6 +15,10 @@ public class ThreadControl {
 
     private static Map<String, Thread> uniqueSourceIdToBlockThread = new ConcurrentHashMap();
 
+    static {
+
+    }
+
     public static void park(String uniqueSourceId){
         Thread previousThread = uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
         if(previousThread != null){
@@ -24,10 +28,7 @@ public class ThreadControl {
     }
 
     public static boolean parkAndCheckInterrupt(String uniqueSourceId){
-        Thread previousThread = uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
-        if(previousThread != null){
-            throw new IllegalStateException();
-        }
+        uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
         LockSupport.park();
         return Thread.interrupted();
     }

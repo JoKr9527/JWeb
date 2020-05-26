@@ -15,7 +15,7 @@ public enum RedisConsts {
             }
             return false;
         }
-    }, ONEL(1L){
+    }, SUCCESS_REPLY(1L){
         @Override
         boolean isEqual(Object v) {
             if(v instanceof Long){

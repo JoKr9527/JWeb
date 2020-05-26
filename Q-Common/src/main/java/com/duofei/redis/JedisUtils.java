@@ -5,6 +5,9 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPubSub;
 
+import java.util.function.Consumer;
+import java.util.function.Function;
+
 /**
  * Jedis 工具类
  * @author duofei
@@ -12,38 +15,65 @@ import redis.clients.jedis.JedisPubSub;
  */
 public class JedisUtils {
 
-    private static String HOST = "192.168.3.18";
+    private static String HOST = "localhost";
     private static int PORT = 6379;
     private static JedisPool jedisPool = new JedisPool(HOST, PORT);
+
+    static {
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                jedisPool.destroy();
+            }
+        });
+    }
 
     public static Jedis getJedis(){
         return jedisPool.getResource();
     }
 
     public static long rPush(String key, String value){
-        return getJedis().rpush(key, value);
+        return call(jedis -> jedis.rpush(key, value));
     }
 
     public static String lIndex(String key, long index){
-        return getJedis().lindex(key, index);
+        return call(jedis -> jedis.lindex(key, index));
     }
 
     public static String lPop(String key){
-        return getJedis().lpop(key);
+        return call(jedis -> jedis.lpop(key));
     }
 
     public static void publish(String channel, String message){
-        getJedis().publish(channel, message);
+        run(jedis -> {
+            if(message != null && message.length() != 0 ){
+                jedis.publish(channel, message);
+            }
+        });
     }
 
     public static void subscribe(String channel){
-        getJedis().subscribe(new JedisPubSub() {
-            @Override
-            public void onMessage(String channel, String message) {
-                if(message != null && message.length() != 0){
-                    ThreadControl.unpark(message);
+        run(jedis -> {
+            jedis.subscribe(new JedisPubSub() {
+                @Override
+                public void onMessage(String channel, String message) {
+                    if(message != null && message.length() != 0){
+                        ThreadControl.unpark(message);
+                    }
                 }
-            }
-        }, channel);
+            }, channel);
+        });
+    }
+
+    public static void run(Consumer<Jedis> action){
+        try(Jedis jedis = getJedis()){
+            action.accept(jedis);
+        }
+    }
+
+    public static <T> T call(Function<Jedis, T> actionFunction){
+        try(Jedis jedis = getJedis()){
+            return actionFunction.apply(jedis);
+        }
     }
 }

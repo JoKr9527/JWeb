@@ -1,7 +1,8 @@
 package com.duofei.redis;
 
 import com.duofei.ThreadControl;
-import redis.clients.jedis.Jedis;
+import com.duofei.redis.task.DeadLockCheckTask;
+import com.duofei.redis.task.TopicSubscribeTask;
 import redis.clients.jedis.params.SetParams;
 
 import java.util.Collections;
@@ -12,38 +13,54 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * @author duofei
  * @date 2020/5/20
  */
-public class JedisLock implements Lock {
+public class JedisLock implements Lock, ListKeyConstruct {
 
     private String uniqueResourceIdentifier = UUID.randomUUID().toString().replaceAll("-", "");
-    private static long DEFAULT_TIME = 30000;
+    private static long DEFAULT_TIME = 10000;
     private static String UNLOCK_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end";
-    private static String DEFAULT_LIST_SUFFIX = "_LIST";
-    private static Set lockedKeys = new HashSet();
+    private static String RENEWAL_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('pexpire',KEYS[1],ARGV[2]) else return 0 end";
+    public static String DEFAULT_TOPIC = "DistributeLock";
+    public static Set<String> subscribedTopics = new HashSet<>();
 
     private long expireTime;
     private String lockedKey;
+    private String topic = DEFAULT_TOPIC;
     private Function<String, String> constructListKey;
 
-    public JedisLock(String lockedKey) {
-        this(DEFAULT_TIME, lockedKey);
+    static {
+        subscribedTopics.add(DEFAULT_TOPIC);
+        TaskManager.handle(new TopicSubscribeTask(DEFAULT_TOPIC));
+        TaskManager.handle(new DeadLockCheckTask(DEFAULT_TIME * 2));
     }
 
-    public JedisLock(long expireTime, String lockedKey) {
+    public JedisLock(String lockedKey) {
+        this(DEFAULT_TIME, lockedKey, DEFAULT_TOPIC);
+    }
+
+    public JedisLock(long expireTime, String lockedKey, String topic) {
         this.expireTime = expireTime;
         this.lockedKey = lockedKey;
-        if(!lockedKeys.contains(lockedKey)){
-            lockedKeys.add(lockedKey);
-            TaskManager.handle(new ListSubscribeTask(lockedKey));
+        this.topic = topic;
+        if(needSubscribe(topic)){
+            TaskManager.handle(new TopicSubscribeTask(lockedKey));
+            subscribedTopics.add(lockedKey);
         }
     }
 
     public void setConstructListKey(Function<String, String> constructListKey) {
         this.constructListKey = constructListKey;
+    }
+
+    @Override
+    public Function<String, String> getConstructListKey() {
+        return constructListKey;
     }
 
     @Override
@@ -83,6 +100,22 @@ public class JedisLock implements Lock {
         throw new UnsupportedOperationException();
     }
 
+    public long getExpireTime() {
+        return expireTime;
+    }
+
+    public String getLockedKey() {
+        return lockedKey;
+    }
+
+    public String getTopic() {
+        return topic;
+    }
+
+    private boolean needSubscribe(String topic){
+        return !subscribedTopics.contains(topic);
+    }
+
     private boolean tryAcquire() {
         return JedisUtils.call(jedis -> {
             String uniqueResourceId = jedis.get(lockedKey);
@@ -93,8 +126,10 @@ public class JedisLock implements Lock {
                 }
             }
             if(uniqueResourceIdentifier.equals(uniqueResourceId)){
-                Long result = jedis.pexpire(lockedKey, expireTime);
-                if(RedisConsts.SUCCESS_REPLY.isEqual(result)){
+                // 以脚本保证续约的原子性，否则可能为其它持有锁的线程续约
+                Object result = jedis.eval(RENEWAL_SCRIPT, Collections.singletonList(lockedKey),
+                        Stream.of(uniqueResourceIdentifier, String.valueOf(expireTime)).collect(Collectors.toList()));
+                if (RedisConsts.SUCCESS_REPLY.isEqual(result)) {
                     return true;
                 }
             }
@@ -110,7 +145,6 @@ public class JedisLock implements Lock {
     }
 
     private boolean tryRelease() {
-        //TODO 是否需要抛出
         return JedisUtils.call(jedis -> {
             String uniqueResourceId = jedis.get(lockedKey);
             if (!uniqueResourceIdentifier.equals(uniqueResourceId)) {
@@ -134,8 +168,8 @@ public class JedisLock implements Lock {
             for (; ; ) {
                 String resourceId = JedisUtils.lIndex(listKey, 0L);
                 if (uniqueResourceIdentifier.equals(resourceId) && tryAcquire()) {
-                    JedisUtils.lPop(listKey);
                     failed = false;
+                    JedisUtils.lPop(listKey);
                     return interrupted;
                 }
                 if (parkAndCheckInterrupt()) {
@@ -165,8 +199,8 @@ public class JedisLock implements Lock {
             for (; ; ) {
                 String resourceId = JedisUtils.lIndex(listKey, 0L);
                 if (uniqueResourceIdentifier.equals(resourceId) && tryAcquire()) {
-                    JedisUtils.lPop(listKey);
                     failed = false;
+                    JedisUtils.lPop(listKey);
                     return true;
                 }
                 nanosTimeout = deadline - System.nanoTime();
@@ -189,16 +223,15 @@ public class JedisLock implements Lock {
     }
 
     private void doAcquireInterruptibly() throws InterruptedException {
-        // 入等待队列
         String listKey = constructListKey(lockedKey);
         JedisUtils.rPush(listKey, uniqueResourceIdentifier);
-        boolean failed = false;
+        boolean failed = true;
         try {
             for (; ; ) {
                 String resourceId = JedisUtils.lIndex(listKey, 0L);
                 if (uniqueResourceIdentifier.equals(resourceId) && tryAcquire()) {
-                    JedisUtils.lPop(listKey);
                     failed = false;
+                    JedisUtils.lPop(listKey);
                     return;
                 }
                 if (parkAndCheckInterrupt()) {
@@ -214,15 +247,20 @@ public class JedisLock implements Lock {
 
     private boolean release() {
         if (tryRelease()) {
-            JedisUtils.publish(lockedKey, JedisUtils.lIndex(constructListKey(lockedKey), 0));
+            JedisUtils.publish(topic, JedisUtils.lIndex(constructListKey(lockedKey), 0));
             return true;
         }
         return false;
     }
 
     private void cancelAcquire() {
+        ThreadControl.abandon(uniqueResourceIdentifier);
+        String listKey = constructListKey(lockedKey);
+        JedisUtils.run(jedis -> {
+            jedis.lrem(listKey, 1L, uniqueResourceIdentifier);
+        });
         // 通知让其他锁请求有机会执行
-        JedisUtils.publish(lockedKey, JedisUtils.lIndex(constructListKey(lockedKey), 0));
+        JedisUtils.publish(topic, JedisUtils.lIndex(listKey, 0));
     }
 
     void selfInterrupt() {
@@ -231,13 +269,6 @@ public class JedisLock implements Lock {
 
     private boolean parkAndCheckInterrupt() {
         return ThreadControl.parkAndCheckInterrupt(uniqueResourceIdentifier);
-    }
-
-    private String constructListKey(String lockedKey){
-        if(constructListKey != null){
-            return constructListKey.apply(lockedKey);
-        }
-        return lockedKey + DEFAULT_LIST_SUFFIX;
     }
 
 }

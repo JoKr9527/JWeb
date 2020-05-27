@@ -23,11 +23,16 @@ public class JedisUtils {
         Runtime.getRuntime().addShutdownHook(new Thread(){
             @Override
             public void run() {
-                jedisPool.destroy();
+                if(jedisPool != null){
+                    jedisPool.destroy();
+                }
             }
         });
     }
 
+    /**
+     * 注意：调用该方法以后，一定记得调用 Jedis 的 close 方法；该方法与 close 方法之前也不有阻塞的可能性存在
+     */
     public static Jedis getJedis(){
         return jedisPool.getResource();
     }

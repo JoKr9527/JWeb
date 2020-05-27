@@ -11,34 +11,22 @@ import java.util.concurrent.locks.LockSupport;
  */
 public class ThreadControl {
 
-    private static long TIMEOUT = 5000;
-
-    private static Map<String, Thread> uniqueSourceIdToBlockThread = new ConcurrentHashMap();
-
-    static {
-
-    }
+    private static Map<String, Thread> uniqueSourceIdToBlockThread = new ConcurrentHashMap<>();
 
     public static void park(String uniqueSourceId){
-        Thread previousThread = uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
-        if(previousThread != null){
-            throw new IllegalStateException();
-        }
-        LockSupport.park();
+        uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
+        LockSupport.park(uniqueSourceId);
     }
 
     public static boolean parkAndCheckInterrupt(String uniqueSourceId){
         uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
-        LockSupport.park();
+        LockSupport.park(uniqueSourceId);
         return Thread.interrupted();
     }
 
     public static void parkNanos(String uniqueSourceId, Long nanos){
-        Thread previousThread = uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
-        if(previousThread != null){
-            throw new IllegalStateException();
-        }
-        LockSupport.park(nanos);
+        uniqueSourceIdToBlockThread.putIfAbsent(uniqueSourceId, Thread.currentThread());
+        LockSupport.parkNanos(uniqueSourceId, nanos);
     }
 
     public static void unpark(String uniqueSourceId){
@@ -47,5 +35,13 @@ public class ThreadControl {
             LockSupport.unpark(thread);
             uniqueSourceIdToBlockThread.remove(uniqueSourceId);
         }
+    }
+
+    public static void abandon(String uniqueSourceId){
+        uniqueSourceIdToBlockThread.remove(uniqueSourceId);
+    }
+
+    public static Map<String, Thread> getUniqueSourceIdToBlockThread(){
+        return uniqueSourceIdToBlockThread;
     }
 }

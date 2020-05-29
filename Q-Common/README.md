@@ -19,7 +19,7 @@
 
    - `JedisUtils`：封装了需要使用到的 `Jedis` 操作；(`redis` 连接也在该类中)
 
-   - `ListKeyConstruct`: 定义可自定义队列名称功能的接口，用于 `JedisLock` 中构造队列名称；
+   - `QueueKeyConstruct`: 定义可自定义队列名称功能的接口，用于 `JedisLock` 中构造队列名称；
 
    - `RedisConsts`：一些常量；
 
@@ -30,6 +30,9 @@
    - `TaskManager`：分配线程，可用于执行上面的两个任务；
 
    - `ThreadControl`：持有阻塞的线程资源，并负责 `park` 和 `unpark` 操作；
+   
+   - `QueueManager`：将 `redis` 的 List 数据结构抽象为队列操作；
+
 
 5. 总结：
 

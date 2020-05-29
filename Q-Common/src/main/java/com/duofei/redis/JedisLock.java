@@ -5,10 +5,8 @@ import com.duofei.redis.task.DeadLockCheckTask;
 import com.duofei.redis.task.TopicSubscribeTask;
 import redis.clients.jedis.params.SetParams;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
@@ -20,14 +18,14 @@ import java.util.stream.Stream;
  * @author duofei
  * @date 2020/5/20
  */
-public class JedisLock implements Lock, ListKeyConstruct {
+public class JedisLock implements Lock, QueueKeyConstruct {
 
     private String uniqueResourceIdentifier = UUID.randomUUID().toString().replaceAll("-", "");
     private static long DEFAULT_TIME = 10000;
     private static String UNLOCK_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('del',KEYS[1]) else return 0 end";
     private static String RENEWAL_SCRIPT = "if redis.call('get', KEYS[1]) == ARGV[1] then return redis.call('pexpire',KEYS[1],ARGV[2]) else return 0 end";
     public static String DEFAULT_TOPIC = "DistributeLock";
-    public static Set<String> subscribedTopics = new HashSet<>();
+    public static Map<String, Boolean> subscribedTopics = new ConcurrentHashMap<>();
 
     private long expireTime;
     private String lockedKey;
@@ -35,7 +33,7 @@ public class JedisLock implements Lock, ListKeyConstruct {
     private Function<String, String> constructListKey;
 
     static {
-        subscribedTopics.add(DEFAULT_TOPIC);
+        subscribedTopics.put(DEFAULT_TOPIC, Boolean.TRUE);
         TaskManager.handle(new TopicSubscribeTask(DEFAULT_TOPIC));
         TaskManager.handle(new DeadLockCheckTask(DEFAULT_TIME * 2));
     }
@@ -48,10 +46,6 @@ public class JedisLock implements Lock, ListKeyConstruct {
         this.expireTime = expireTime;
         this.lockedKey = lockedKey;
         this.topic = topic;
-        if(needSubscribe(topic)){
-            TaskManager.handle(new TopicSubscribeTask(lockedKey));
-            subscribedTopics.add(lockedKey);
-        }
     }
 
     public void setConstructListKey(Function<String, String> constructListKey) {
@@ -59,7 +53,7 @@ public class JedisLock implements Lock, ListKeyConstruct {
     }
 
     @Override
-    public Function<String, String> getConstructListKey() {
+    public Function<String, String> getConstructQueueKey() {
         return constructListKey;
     }
 
@@ -112,8 +106,9 @@ public class JedisLock implements Lock, ListKeyConstruct {
         return topic;
     }
 
-    private boolean needSubscribe(String topic){
-        return !subscribedTopics.contains(topic);
+    private boolean needSubscribe() {
+        Boolean oldValue = subscribedTopics.putIfAbsent(topic, Boolean.TRUE);
+        return oldValue == null;
     }
 
     private boolean tryAcquire() {
@@ -125,7 +120,7 @@ public class JedisLock implements Lock, ListKeyConstruct {
                     return true;
                 }
             }
-            if(uniqueResourceIdentifier.equals(uniqueResourceId)){
+            if (uniqueResourceIdentifier.equals(uniqueResourceId)) {
                 // 以脚本保证续约的原子性，否则可能为其它持有锁的线程续约
                 Object result = jedis.eval(RENEWAL_SCRIPT, Collections.singletonList(lockedKey),
                         Stream.of(uniqueResourceIdentifier, String.valueOf(expireTime)).collect(Collectors.toList()));
@@ -159,17 +154,21 @@ public class JedisLock implements Lock, ListKeyConstruct {
     }
 
     private boolean acquireList() {
+        if(!topic.equals(DEFAULT_TOPIC) && needSubscribe()){
+            TaskManager.handle(new TopicSubscribeTask(topic));
+        }
         // 入等待队列
-        String listKey = constructListKey(lockedKey);
-        JedisUtils.rPush(listKey, uniqueResourceIdentifier);
+        String queueName = constructQueueKey(lockedKey);
+        QueueManager.offer(queueName, uniqueResourceIdentifier);
         boolean failed = true;
         try {
             boolean interrupted = false;
             for (; ; ) {
-                String resourceId = JedisUtils.lIndex(listKey, 0L);
+                String resourceId = QueueManager.peek(queueName);
                 if (uniqueResourceIdentifier.equals(resourceId) && tryAcquire()) {
                     failed = false;
-                    JedisUtils.lPop(listKey);
+                    ThreadControl.abandon(uniqueResourceIdentifier);
+                    QueueManager.poll(queueName);
                     return interrupted;
                 }
                 if (parkAndCheckInterrupt()) {
@@ -192,15 +191,19 @@ public class JedisLock implements Lock, ListKeyConstruct {
             return false;
         }
         final long deadline = nanosTimeout + System.nanoTime();
-        String listKey = constructListKey(lockedKey);
-        JedisUtils.rPush(listKey, uniqueResourceIdentifier);
+        if(!topic.equals(DEFAULT_TOPIC) && needSubscribe()){
+            TaskManager.handle(new TopicSubscribeTask(topic));
+        }
+        String queueName = constructQueueKey(lockedKey);
+        QueueManager.offer(queueName, uniqueResourceIdentifier);
         boolean failed = true;
         try {
             for (; ; ) {
-                String resourceId = JedisUtils.lIndex(listKey, 0L);
+                String resourceId = QueueManager.peek(queueName);
                 if (uniqueResourceIdentifier.equals(resourceId) && tryAcquire()) {
                     failed = false;
-                    JedisUtils.lPop(listKey);
+                    ThreadControl.abandon(uniqueResourceIdentifier);
+                    QueueManager.poll(queueName);
                     return true;
                 }
                 nanosTimeout = deadline - System.nanoTime();
@@ -223,15 +226,19 @@ public class JedisLock implements Lock, ListKeyConstruct {
     }
 
     private void doAcquireInterruptibly() throws InterruptedException {
-        String listKey = constructListKey(lockedKey);
-        JedisUtils.rPush(listKey, uniqueResourceIdentifier);
+        if(!topic.equals(DEFAULT_TOPIC) && needSubscribe()){
+            TaskManager.handle(new TopicSubscribeTask(topic));
+        }
+        String queueName = constructQueueKey(lockedKey);
+        QueueManager.offer(queueName, uniqueResourceIdentifier);
         boolean failed = true;
         try {
             for (; ; ) {
-                String resourceId = JedisUtils.lIndex(listKey, 0L);
+                String resourceId = QueueManager.peek(queueName);
                 if (uniqueResourceIdentifier.equals(resourceId) && tryAcquire()) {
                     failed = false;
-                    JedisUtils.lPop(listKey);
+                    ThreadControl.abandon(uniqueResourceIdentifier);
+                    QueueManager.poll(queueName);
                     return;
                 }
                 if (parkAndCheckInterrupt()) {
@@ -247,7 +254,7 @@ public class JedisLock implements Lock, ListKeyConstruct {
 
     private boolean release() {
         if (tryRelease()) {
-            JedisUtils.publish(topic, JedisUtils.lIndex(constructListKey(lockedKey), 0));
+            JedisUtils.publish(topic, QueueManager.peek(constructQueueKey(lockedKey)));
             return true;
         }
         return false;
@@ -255,12 +262,10 @@ public class JedisLock implements Lock, ListKeyConstruct {
 
     private void cancelAcquire() {
         ThreadControl.abandon(uniqueResourceIdentifier);
-        String listKey = constructListKey(lockedKey);
-        JedisUtils.run(jedis -> {
-            jedis.lrem(listKey, 1L, uniqueResourceIdentifier);
-        });
+        String queueName = constructQueueKey(lockedKey);
+        QueueManager.remove(queueName, uniqueResourceIdentifier);
         // 通知让其他锁请求有机会执行
-        JedisUtils.publish(topic, JedisUtils.lIndex(listKey, 0));
+        JedisUtils.publish(topic, QueueManager.poll(queueName));
     }
 
     void selfInterrupt() {

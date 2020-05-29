@@ -29,7 +29,7 @@ public class JedisBlockLockTest {
 
     private void executeTask() {
         System.out.println("开始...");
-        ExecutorService executorService = new ThreadPoolExecutor(8, 8, 1000, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>());
+        ExecutorService executorService = new ThreadPoolExecutor(6, 8, 1000, TimeUnit.MILLISECONDS, new LinkedBlockingDeque<>());
         try {
             for (int i = 0; i < 20; i++) {
                 Thread.sleep(1000);

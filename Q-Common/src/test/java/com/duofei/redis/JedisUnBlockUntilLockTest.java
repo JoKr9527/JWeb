@@ -23,6 +23,7 @@ import java.util.concurrent.locks.Lock;
 public class JedisUnBlockUntilLockTest {
 
     private static AtomicInteger interruptedCount = new AtomicInteger(0);
+    private static AtomicInteger noGetLockCount = new AtomicInteger(0);
 
     @Test
     public void process1() {
@@ -74,7 +75,8 @@ public class JedisUnBlockUntilLockTest {
             e.printStackTrace();
         }
         Jedis jedis = JedisUtils.getJedis();
-        System.out.println("userCountValue: " + jedis.get("userCountValue") + "; interruptedCount: " + interruptedCount.get());
+        System.out.println("userCountValue: " + jedis.get("userCountValue") + "; interruptedCount: " + interruptedCount.get()
+            + "; noGetLockCount: " + noGetLockCount.get());
         jedis.close();
     }
 
@@ -97,6 +99,8 @@ public class JedisUnBlockUntilLockTest {
                     }finally {
                         userCountLock.unlock();
                     }
+                }else{
+                    noGetLockCount.addAndGet(1);
                 }
             } catch (InterruptedException e) {
                 interruptedCount.addAndGet(1);

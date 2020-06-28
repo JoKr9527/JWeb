@@ -1,8 +1,11 @@
-package com.duofei.redis;
+package com.duofei.distributed.lock.redisson.lock;
 
+import com.duofei.Application;
 import com.duofei.distributed.lock.redis.DistributeLock;
 import com.duofei.distributed.lock.redis.JedisUtils;
+import com.duofei.distributed.lock.redis.redisson.RedissonClientFactory;
 import org.junit.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 import redis.clients.jedis.Jedis;
 
 import java.util.concurrent.ExecutorService;
@@ -17,7 +20,8 @@ import java.util.concurrent.locks.Lock;
  * @author duofei
  * @date 2020/5/25
  */
-public class JedisBlockLockTest {
+@SpringBootTest(classes = Application.class)
+public class RedissonUnBlockLockTest {
 
     @Test
     public void process1() {
@@ -45,7 +49,6 @@ public class JedisBlockLockTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
         Jedis jedis = JedisUtils.getJedis();
         System.out.println(jedis.get("userCountValue"));
         jedis.close();
@@ -54,20 +57,21 @@ public class JedisBlockLockTest {
     static class DistributedBlockTask implements Runnable {
         @Override
         public void run() {
-            Lock userCountLock = DistributeLock.User_Count.newLock();
-            userCountLock.lock();
-            try (Jedis jedis = JedisUtils.getJedis()){
-                String key = "userCountValue";
-                String value = jedis.get(key);
-                int i = (value != null ? Integer.parseInt(value) : 0);
-                System.out.println(Thread.currentThread().getName() + " " + i);
-                i++;
-                jedis.set(key, String.valueOf(i));
-                Thread.sleep(500);
-            }catch (Exception e){
-                e.printStackTrace();
-            }finally {
-                userCountLock.unlock();
+            Lock userCountLock = RedissonClientFactory.getRedissonClient().getLock("userCount");
+            if (userCountLock.tryLock()) {
+                try (Jedis jedis = JedisUtils.getJedis()) {
+                    String key = "userCountValue";
+                    String value = jedis.get(key);
+                    int i = (value != null ? Integer.parseInt(value) : 0);
+                    System.out.println(Thread.currentThread().getName() + " " + i);
+                    i++;
+                    jedis.set(key, String.valueOf(i));
+                    Thread.sleep(500);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    userCountLock.unlock();
+                }
             }
         }
     }

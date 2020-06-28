@@ -1,4 +1,4 @@
-package com.duofei.redis;
+package com.duofei.distributed.lock.redis;
 
 import com.duofei.distributed.lock.ThreadControl;
 import com.duofei.distributed.lock.redis.DistributeLock;
@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 
 /**
@@ -21,7 +22,10 @@ import java.util.concurrent.locks.Lock;
  * @author duofei
  * @date 2020/5/25
  */
-public class JedisBlockInterruptilyLockTest {
+public class JedisUnBlockUntilLockTest {
+
+    private static AtomicInteger interruptedCount = new AtomicInteger(0);
+    private static AtomicInteger noGetLockCount = new AtomicInteger(0);
 
     @Test
     public void process1() {
@@ -72,9 +76,9 @@ public class JedisBlockInterruptilyLockTest {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
         Jedis jedis = JedisUtils.getJedis();
-        System.out.println(jedis.get("userCountValue"));
+        System.out.println("userCountValue: " + jedis.get("userCountValue") + "; interruptedCount: " + interruptedCount.get()
+            + "; noGetLockCount: " + noGetLockCount.get());
         jedis.close();
     }
 
@@ -83,21 +87,25 @@ public class JedisBlockInterruptilyLockTest {
         public void run() {
             Lock userCountLock = DistributeLock.User_Count.newLock();
             try {
-                userCountLock.lockInterruptibly();
-                try (Jedis jedis = JedisUtils.getJedis()){
-                    String key = "userCountValue";
-                    String value = jedis.get(key);
-                    int i = (value != null ? Integer.parseInt(value) : 0);
-                    System.out.println(Thread.currentThread().getName() + " " + i);
-                    i++;
-                    jedis.set(key, String.valueOf(i));
-                    Thread.sleep(500);
-                }catch (Exception e){
-                    e.printStackTrace();
-                }finally {
-                    userCountLock.unlock();
+                if(userCountLock.tryLock(2, TimeUnit.SECONDS)){
+                    try (Jedis jedis = JedisUtils.getJedis()){
+                        String key = "userCountValue";
+                        String value = jedis.get(key);
+                        int i = (value != null ? Integer.parseInt(value) : 0);
+                        System.out.println(Thread.currentThread().getName() + " " + i);
+                        i++;
+                        jedis.set(key, String.valueOf(i));
+                        Thread.sleep(500);
+                    }catch (Exception e){
+                        e.printStackTrace();
+                    }finally {
+                        userCountLock.unlock();
+                    }
+                }else{
+                    noGetLockCount.addAndGet(1);
                 }
             } catch (InterruptedException e) {
+                interruptedCount.addAndGet(1);
                 e.printStackTrace();
             }
         }

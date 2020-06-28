@@ -1,6 +1,6 @@
-package com.duofei.redis.task;
+package com.duofei.distributed.lock.redis.task;
 
-import com.duofei.redis.JedisUtils;
+import com.duofei.distributed.lock.redis.JedisUtils;
 
 /**
  * redis 队列订阅

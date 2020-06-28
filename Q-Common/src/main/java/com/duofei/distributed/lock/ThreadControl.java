@@ -1,4 +1,4 @@
-package com.duofei;
+package com.duofei.distributed.lock;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;

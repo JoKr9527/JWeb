@@ -1,6 +1,7 @@
 package com.duofei.redis;
 
-import com.duofei.Application;
+import com.duofei.distributed.lock.redis.DistributeLock;
+import com.duofei.distributed.lock.redis.JedisUtils;
 import org.junit.Test;
 import redis.clients.jedis.Jedis;
 

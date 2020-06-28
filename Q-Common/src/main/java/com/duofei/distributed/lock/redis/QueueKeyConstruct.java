@@ -1,4 +1,4 @@
-package com.duofei.redis;
+package com.duofei.distributed.lock.redis;
 
 import java.util.function.Function;
 

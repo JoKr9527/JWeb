@@ -1,8 +1,8 @@
-package com.duofei.redis.task;
+package com.duofei.distributed.lock.redis.task;
 
-import com.duofei.ThreadControl;
-import com.duofei.redis.JedisUtils;
-import com.duofei.redis.QueueManager;
+import com.duofei.distributed.lock.ThreadControl;
+import com.duofei.distributed.lock.redis.QueueManager;
+import com.duofei.distributed.lock.redis.JedisUtils;
 
 import java.util.List;
 import java.util.Map;

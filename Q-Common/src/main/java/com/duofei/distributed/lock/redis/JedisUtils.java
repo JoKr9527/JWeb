@@ -1,6 +1,6 @@
-package com.duofei.redis;
+package com.duofei.distributed.lock.redis;
 
-import com.duofei.ThreadControl;
+import com.duofei.distributed.lock.ThreadControl;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPubSub;

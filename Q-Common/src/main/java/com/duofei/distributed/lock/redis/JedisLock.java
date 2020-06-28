@@ -1,8 +1,8 @@
-package com.duofei.redis;
+package com.duofei.distributed.lock.redis;
 
-import com.duofei.ThreadControl;
-import com.duofei.redis.task.DeadLockCheckTask;
-import com.duofei.redis.task.TopicSubscribeTask;
+import com.duofei.distributed.lock.ThreadControl;
+import com.duofei.distributed.lock.redis.task.TopicSubscribeTask;
+import com.duofei.distributed.lock.redis.task.DeadLockCheckTask;
 import redis.clients.jedis.params.SetParams;
 
 import java.util.*;
